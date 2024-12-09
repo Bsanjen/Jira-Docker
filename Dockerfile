@@ -1,20 +1,14 @@
-# Use a base Ubuntu image
-FROM ubuntu:20.04
+# Use an official Ubuntu image as a base
+FROM ubuntu:latest
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install basic packages
-RUN apt-get update && \
-    apt-get install -y wget curl vim && \
-    apt-get clean
-
-# Set the working directory
+# Set a working directory
 WORKDIR /app
 
-# Add a placeholder script (optional)
-RUN echo '#!/bin/bash\necho "Hello from Ubuntu Container!"' > /app/start.sh && \
-    chmod +x /app/start.sh
+# Update and install essential packages (if needed)
+RUN apt-get update && apt-get install -y \
+    curl \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
 
-# Define the default command
-CMD ["/app/start.sh"]
+# Set the default command to run when the container starts
+CMD ["bash"]
