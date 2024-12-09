@@ -1,22 +1,43 @@
-# Use an Atlassian-compatible base image for Jira
-FROM atlassian/jira-software:latest
+# Use a base Ubuntu image
+FROM ubuntu:20.04
 
 # Set environment variables
-ENV JIRA_HOME /var/atlassian/jira
-ENV JIRA_PORT 7325
+ENV JIRA_HOME=/var/atlassian/application-data/jira
+ENV JIRA_INSTALL_DIR=/opt/atlassian/jira
+ENV JIRA_VERSION=9.12.0
+ENV JIRA_PORT=7325
 
-# Expose the Jira server port (7325)
-EXPOSE 7325
+# Expose the Jira server port
+EXPOSE ${JIRA_PORT}
 
-# Add the start script directly in the Dockerfile
-COPY <<EOF
-#!/bin/bash
-# Script to start Jira with a custom port
-/opt/atlassian/jira/bin/start-jira.sh -fg --port 7325
-EOF
+# Install required dependencies and Java
+RUN apt-get update && \
+    apt-get install -y wget curl unzip openjdk-11-jdk && \
+    apt-get clean
 
-# Make the start script executable
-RUN chmod +x /opt/atlassian/jira/bin/start-jira.sh
+# Set JAVA_HOME environment variable for Java
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Start Jira Server with the custom port
-CMD ["/opt/atlassian/jira/bin/start-jira.sh"]
+# Create a user 'sanjen' to run Jira
+RUN useradd --create-home --home-dir /home/sanjen --shell /bin/bash sanjen
+
+# Download and install Jira Software
+RUN wget https://product-downloads.atlassian.com/software/jira/downloads/atlassian-jira-software-${JIRA_VERSION}-x64.bin -O /tmp/jira-installer.bin && \
+    chmod +x /tmp/jira-installer.bin && \
+    echo -e "\nq\n1\n1\n/opt/atlassian/jira\n/var/atlassian/application-data/jira\n2\nn" | /tmp/jira-installer.bin && \
+    rm /tmp/jira-installer.bin
+
+# Set Jira's home directory permissions for 'sanjen'
+RUN mkdir -p ${JIRA_HOME} && \
+    chown -R sanjen:sanjen ${JIRA_HOME} && \
+    chown -R sanjen:sanjen ${JIRA_INSTALL_DIR}
+
+# Switch to the 'sanjen' user
+USER sanjen
+
+# Set the working directory to the Jira installation directory
+WORKDIR /opt/atlassian/jira
+
+# Start Jira directly
+CMD ["./bin/start-jira.sh", "-fg", "--port", "7325"]
